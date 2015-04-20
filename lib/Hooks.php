@@ -11,13 +11,17 @@
 
 namespace Icybee\Modules\I18n;
 
-use Icybee\Modules\Nodes\Node;
 use ICanBoogie\Event;
 use ICanBoogie\Modules;
-use Icybee\Modules\Nodes\PopNode;
+use ICanBoogie\Operation\BeforeProcessEvent;
 
 use Brickrouge\Element;
 use Brickrouge\Form;
+
+use Icybee\ManageBlock;
+use Icybee\Modules\Nodes\Node;
+use Icybee\Modules\Nodes\ManageBlock as NodeManageBlock;
+use Icybee\Modules\Nodes\SaveOperation as NodeSaveOperation;
 
 class Hooks
 {
@@ -37,15 +41,15 @@ class Hooks
 	 * - The `language` property is defined in the CHILDREN array but is empty, indicating that
 	 * the language is irrelevant for the node.
 	 *
-	 * @param Event $event
+	 * @param \Icybee\EditBlock\AlterChildrenEvent $event
 	 */
-	static public function on_nodes_editblock_alter_children(Event $event, \Icybee\Modules\Nodes\EditBlock $block)
+	static public function on_nodes_editblock_alter_children(\Icybee\EditBlock\AlterChildrenEvent $event, \Icybee\Modules\Nodes\EditBlock $block)
 	{
-		global $core;
+		$app = \ICanBoogie\app();
 
-		$site = $core->site;
+		$site = $app->site;
 
-		if (!$site->nativeid || !isset($core->modules['i18n']))
+		if (!$site->nativeid || !isset($app->modules['i18n']))
 		{
 			return;
 		}
@@ -53,13 +57,13 @@ class Hooks
 		$module = $event->module;
 		$languages = $module->model->where('language != ""')->count('language');
 
-		if (!count($languages)/* || current($languages) == $core->site->language*/)
+		if (0 && !count($languages)/* || current($languages) == $core->site->language*/)
 		{
 			return;
 		}
 
 		$children = &$event->children;
-
+//var_dump($children);
 		if (array_key_exists(Node::LANGUAGE, $children) && !$children[Node::LANGUAGE])
 		{
 			return;
@@ -89,5 +93,20 @@ class Hooks
 			NodeNativeElement::CONSTRUCTOR => $module->id
 
 		]);
+	}
+
+	static public function on_nodes_manageblock_register_columns(ManageBlock\RegisterColumnsEvent $event, NodeManageBlock $target)
+	{
+		$event->add(new NodeManageBlock\TranslationsColumn($target, 't10s'), 'after:title');
+	}
+
+	static public function before_node_save_operation(BeforeProcessEvent $event, NodeSaveOperation $target)
+	{
+		if ($event->request[Node::LANGUAGE] !== null)
+		{
+			return;
+		}
+
+		$event->request[Node::LANGUAGE] = $target->app->site->language;
 	}
 }

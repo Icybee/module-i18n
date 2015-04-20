@@ -1,9 +1,9 @@
 <?php
 
-return array
-(
-	'element.description' => array
-	(
+return [
+
+	'element.description' => [
+
 		'language' => "Il s'agit de la langue de l'enregistrement. En général, seuls les
 		enregistrements qui ont la même langue que la page, ou une langue neutre, apparaissent sur
 		la page.",
@@ -12,24 +12,29 @@ return array
 		%native et ses traductions, ici %language. Les enregistrements qui ont
 		une langue neutre ne peuvent pas être traduits, c'est pourquoi ils n'apparaissent pas dans
 		la liste."
-	),
 
-	'group.legend' => array
-	(
+	],
+
+	'group.legend' => [
+
 		'i18n' => 'Internationalisation'
-	),
 
-	'label' => array
-	(
+	],
+
+	'label' => [
+
 		'language' => 'Langue',
 		'nativeid' => 'Source de la traduction'
-	),
+
+	],
 
 	'manage.title.Translations' => 'Traductions',
 
-	'option' => array
-	(
+	'option' => [
+
 		'neutral' => '<neutre>',
 		'none' => '<aucune>'
-	)
-);
+
+	]
+
+];

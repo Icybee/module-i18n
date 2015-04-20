@@ -16,27 +16,40 @@ use ICanBoogie\I18n;
 use Brickrouge\Element;
 use Brickrouge\Form;
 
+use Icybee\Modules\Pages\Blueprint;
 use Icybee\Modules\Pages\Model as PagesModel;
+use Icybee\Modules\Sites\Site;
 
 /**
  * An element to select the language of a node.
+ *
+ * @property-read \Icybee\Modules\Pages\Model $pages_model
+ * @property-read \Icybee\Modules\Sites\Site $native_site
  */
 class NodeNativeElement extends Element
 {
 	const CONSTRUCTOR = '#node-native-constructor';
 
-	public function __construct(array $attributes=[])
+	protected function get_pages_model()
 	{
-		global $core;
+		return $this->app->models['pages'];
+	}
 
-		$site = $core->site;
-		$native = $site->native->language;
+	protected function get_native_site()
+	{
+		return $this->app->site->native;
+	}
+
+	public function __construct(array $attributes = [])
+	{
+		$site = $this->app->site;
+		$native = $this->native_site->language;
 
 		parent::__construct('select', $attributes + [
 
 			Form::LABEL => 'nativeid',
 			Element::GROUP => 'i18n',
-			Element::DESCRIPTION => I18n\t('nativeid', [
+			Element::DESCRIPTION => $this->t('nativeid', [
 
 				'native' => $native,
 				'language' => $site->language
@@ -46,53 +59,51 @@ class NodeNativeElement extends Element
 		]);
 	}
 
-	protected function render_inner_html_for_select() // TODO-20120922: use a BluePrint object or a PopPage element
+	protected function render_inner_html_for_select()
 	{
-		global $core;
-
-		$native = $core->site->native->language;
+		$native_site = $this->native_site;
 		$constructor = $this[self::CONSTRUCTOR];
-		$options = [];
+		$options = $constructor == 'pages'
+			? $this->create_options_for_pages($native_site, $constructor)
+			: $this->create_options_for_nodes($native_site, $constructor);
 
-		if ($constructor == 'pages')
-		{
-			$nodes = $core->models['pages']
-			->select('nid, parentid, title')
-			->filter_by_language($native)
-			->order('weight, created')
-			->all(\PDO::FETCH_OBJ);
-
-			$tree = PagesModel::nestNodes($nodes);
-
-			if ($tree)
-			{
-				PagesModel::setNodesDepth($tree);
-				$records = PagesModel::levelNodesById($tree);
-
-				foreach ($records as $record)
-				{
-					$options[$record->nid] = str_repeat("\xC2\xA0", $record->depth * 4) . $record->title;
-				}
-			}
-		}
-		else
-		{
-			$options = $core->models['nodes']
-			->select('nid, title')
-			->filter_by_constructor_and_language($constructor, $native)
-			->order('title')
-			->pairs;
-
-			foreach ($options as &$label)
-			{
-				$label = \ICanBoogie\shorten($label);
-			}
-
-			unset($label);
-		}
-
-		$this[self::OPTIONS] = [ null => 'none' ] + $options;
+		$this[self::OPTIONS] = [ null => $this->t('none', [], [ 'scope' => 'option' ]) ] + $options;
 
 		return parent::render_inner_html_for_select();
+	}
+
+	private function create_options_for_pages(Site $native_site)
+	{
+		$options = [];
+
+		$query = $this->pages_model
+		->select('nid, parentid, title')
+		->filter_by_siteid($native_site->siteid)
+		->ordered;
+
+		$blueprint = Blueprint::from($query);
+
+		foreach ($blueprint->ordered_nodes as $node)
+		{
+			$options[$node->nid] = str_repeat("\xC2\xA0", $node->depth * 4) . \ICanBoogie\shorten($node->title);
+		}
+
+		return $options;
+	}
+
+	private function create_options_for_nodes(Site $native_site, $constructor)
+	{
+		$options = $this->app->models['nodes']
+		->select('nid, title')
+		->filter_by_constructor_and_language($constructor, $native_site->language)
+		->order('title')
+		->pairs;
+
+		foreach ($options as &$label)
+		{
+			$label = \ICanBoogie\shorten($label);
+		}
+
+		return $options;
 	}
 }
